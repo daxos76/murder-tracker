@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hunt Counter · FFXIV S-Rank Kill Tracker</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#1d2330;--mute:#6b7285;--line:#e1ddd2;--acc:#b3261e;--acc2:#1f6f5c;--bar:#e9e5d9;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171f;--card:#1c202b;--ink:#e8e9ee;--mute:#9aa1b4;--line:#2b3140;--acc:#ff6b61;--acc2:#4cc2a4;--bar:#2b3140;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14171f;--card:#1c202b;--ink:#e8e9ee;--mute:#9aa1b4;--line:#2b3140;--acc:#ff6b61;--acc2:#4cc2a4;--bar:#2b3140;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:880px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.5rem;margin:0 0 2px}
+.sub{color:var(--mute);margin:0 0 18px}
+h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:26px 0 10px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card.ready{border-color:var(--acc2)}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.name{font-weight:700;font-size:1.05rem}
+.zone{color:var(--mute);font-size:.85rem}
+.note{color:var(--mute);font-size:.8rem;margin-top:4px}
+.row{margin-top:12px}
+.rl{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cnt{font-variant-numeric:tabular-nums;font-weight:600}
+.bar{height:6px;border-radius:3px;background:var(--bar);margin:6px 0;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc);transition:width .2s}
+.done .bar i{background:var(--acc2)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 12px}
+button:hover{border-color:var(--mute)}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff}
+.inc{min-width:48px;font-weight:700}
+.acts{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.badge{font-size:.75rem;color:var(--acc2);font-weight:700}
+.bar2{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+input{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0}
+.link{display:flex;gap:6px;margin:10px 0}.link input{flex:1}
+.log{list-style:none;margin:0;padding:0;font-size:.9rem}
+.log li{padding:6px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.log time{color:var(--mute);white-space:nowrap;font-size:.8rem}
+.msg{padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--line);color:var(--mute);margin-bottom:12px}
+.st{font-size:.8rem;color:var(--mute)}
+.banner{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:8px 16px}
+.banner .in{max-width:880px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap}
+.banner input,.banner select{flex:1 1 130px;min-width:0}
+.banner button{flex:1 1 auto}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--card)}
+select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{touch-action:manipulation;min-height:40px}
+button:disabled{opacity:.45;cursor:default}
+@media (pointer:coarse){button{min-height:44px;min-width:44px}input,select{min-height:44px}}
+.card.sel{outline:2px solid var(--acc);outline-offset:-1px}
+.info p{margin:0 0 .6em;color:var(--mute);font-size:.85rem}.info p:last-child{margin:0}
+.off{opacity:.45}
+.need{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
+</style>
+</head>
+<body>
+<header class="banner" id="banner"></header>
+<main id="app"></main>
+<script>
+"use strict";
+var TARGETS=[
+ {id:"leucrotta",exp:"Heavensward",zone:"Azys Lla",s:"Leucrotta",mons:[["Allagan Chimera",50],["Meracydian Vouivre",50],["Lesser Hydra",50]]},
+ {id:"udumbara",exp:"Stormblood",zone:"The Fringes",s:"Udumbara",mons:[["Leshy",100],["Diakka",100]]},
+ {id:"okina",exp:"Stormblood",zone:"The Ruby Sea",s:"Okina",note:"Also needs a full moon, from 12:00 PM Eorzea Time.",mons:[["Yumemi",100],["Naked Yumemi",100]]},
+ {id:"ixtab",exp:"Shadowbringers",zone:"The Rak’tika Greatwood",s:"Ixtab",mons:[["Cracked Ronkan Doll",100],["Cracked Ronkan Thorn",100],["Cracked Ronkan Vessel",100]]},
+ {id:"sphatika",exp:"Endwalker",zone:"Thavnair",s:"Sphatika",mons:[["Vajralangula",100],["Pisaca",100],["Asvattha",100]]},
+ {id:"ruminator",exp:"Endwalker",zone:"Mare Lamentorum",s:"Ruminator",mons:[["Thinker",100],["Weeper",100],["Wanderer",100]]}
+];
+/* Edit this list: one paragraph per entry, shown in the Info section at the bottom of the page. */
+var INFO=["[Placeholder] Add your disclaimers and attribution here."];
+/* ---- Shared-hunt storage: Firebase Realtime Database over plain REST (no SDK, no sign-in) ----
+   1) Create a Realtime Database in the Firebase console, 2) set its rules to: {"rules":{".read":false,".write":false,"sessions":{"$code":{".read":true,".write":true,".validate":"$code.matches(/^h-[a-z0-9]{10}$/)"}}}},
+   3) put the database URL here, e.g. "https://my-hunt-default-rtdb.firebaseio.com" */
+var DB_URL="";
+var POLL_MS=3000; /* how often each open page checks for new kills (well inside the 10 s target) */
+function makeDb(base){
+  base=base.replace(/\/+$/,"");
+  function u(p,q){return base+"/"+p+".json"+(q||"")}
+  function chk(r){if(!r.ok)throw new Error("HTTP "+r.status);return r}
+  return {
+    doc:function(p){return {
+      set:function(d){return fetch(u(p,"?x-http-method-override=PUT"),{method:"POST",body:JSON.stringify(d)}).then(chk)},
+      get:function(){return fetch(u(p)).then(chk).then(function(r){return r.json()}).then(function(d){return {exists:d!=null,data:function(){return d}}})}
+    }},
+    collection:function(p){return {
+      add:function(d){return fetch(u(p),{method:"POST",body:JSON.stringify(d)}).then(chk)},
+      orderBy:function(){return {onSnapshot:function(next,err){
+        var stop=false,last=null;
+        function tick(){
+          if(stop)return;
+          if(document.hidden){setTimeout(tick,POLL_MS);return}
+          fetch(u(p)).then(chk).then(function(r){return r.text()}).then(function(t){
+            if(t!==last){last=t;var o=JSON.parse(t)||{};
+              var rows=Object.keys(o).map(function(k){return o[k]}).sort(function(a,b){return a.t-b.t});
+              next({docs:rows.map(function(r){return {data:function(){return r}}})})}
+          }).catch(function(e){if(err)err(e)}).then(function(){if(!stop)setTimeout(tick,POLL_MS)});
+        }
+        tick();return function(){stop=true};
+      }}}
+    }}
+  };
+}
+var $app=document.getElementById("app");
+var local={},nick="",db=null,user=null,session=null,lastErr="";
+try{local=JSON.parse(localStorage.getItem("ffxiv-hunt")||"{}")}catch(e){}
+try{nick=localStorage.getItem("ffxiv-nick")||""}catch(e){}
+function saveLocal(){try{localStorage.setItem("ffxiv-hunt",JSON.stringify(local))}catch(e){}}
+function saveNick(v){nick=v;try{localStorage.setItem("ffxiv-nick",v)}catch(e){}}
+function h(tag,attrs){
+  var e=document.createElement(tag);attrs=attrs||{};
+  Object.keys(attrs).forEach(function(k){var v=attrs[k];
+    if(k==="class")e.className=v;else if(k.indexOf("on")===0)e.addEventListener(k.slice(2),v);else e.setAttribute(k,v)});
+  for(var i=2;i<arguments.length;i++){[].concat(arguments[i]).forEach(function(c){if(c!=null)e.append(c.nodeType?c:document.createTextNode(c))})}
+  return e;
+}
+function me(){return nick.trim()}
+function find(id){return TARGETS.filter(function(t){return t.id===id})[0]}
+function ago(t){var s=Math.max(0,Math.round((Date.now()-t)/1000));if(s<60)return s+"s ago";if(s<3600)return Math.floor(s/60)+"m ago";return Math.floor(s/3600)+"h ago"}
+
+function nameOk(){return nick.trim().length>0}
+function needName(){var n=document.getElementById("nick");if(n){n.classList.add("need");n.focus()}}
+function card(t,counts,onStep,extra){
+  var ok=nameOk(),off=ok?"":" off",raw=onStep;
+  onStep=function(m,d){if(!nameOk()){needName();return}raw(m,d)};
+  var ready=t.mons.every(function(m){return (counts[m[0]]||0)>=m[1]});
+  var c=h("div",{class:"card"+(ready?" ready":"")},
+    h("div",{class:"top"},h("div",{class:"name"},t.s),ready?h("span",{class:"badge"},"READY TO SPAWN"):h("span",{class:"zone"},t.exp)),
+    h("div",{class:"zone"},t.zone),t.note?h("div",{class:"note"},t.note):null);
+  t.mons.forEach(function(m){
+    var n=Math.max(0,counts[m[0]]||0),pct=Math.min(100,n/m[1]*100);
+    c.append(h("div",{class:"row"+(n>=m[1]?" done":"")},
+      h("div",{class:"rl"},h("span",null,m[0]),
+        h("span",{class:"rl"},
+          h("button",{class:off.trim(),"aria-label":"Minus one "+m[0],"aria-disabled":String(!ok),onclick:function(){onStep(m[0],-1)}},"−"),
+          h("span",{class:"cnt"},n+" / "+m[1]),
+          h("button",{class:"inc p"+off,"aria-label":"Plus one "+m[0],"aria-disabled":String(!ok),onclick:function(){onStep(m[0],1)}},"+"))),
+      h("div",{class:"bar"},h("i",{style:"width:"+pct+"%"}))));
+  });
+  if(extra)c.append(h("div",{class:"acts"},extra));
+  return c;
+}
+
+function home(){
+  $app.replaceChildren(
+    h("h1",null,"Hunt Counter"),
+    h("p",{class:"sub"},"Kill counters for FFXIV S-rank spawns. Saved in this browser; start a shared hunt to sync with others."),
+    ...msg(),
+    h("div",null,groupByExp(TARGETS,function(id){return local[id]||{}},function(id,mon,d){local[id]=local[id]||{};local[id][mon]=Math.max(0,(local[id][mon]||0)+d);saveLocal();home()})),
+    infoSection()
+  );
+  updateBanner();
+}
+function groupByExp(list,getCounts,step){
+  var out=[],seen={};
+  list.forEach(function(t){if(!seen[t.exp]){seen[t.exp]=1;out.push(h("h2",null,t.exp));
+    var g=h("div",{class:"grid"});
+    list.filter(function(x){return x.exp===t.exp}).forEach(function(x){
+      var el=card(x,getCounts(x.id),function(mon,d){step(x.id,mon,d)});
+      if(!session&&x.id===selId)el.classList.add("sel");
+      g.append(el);
+    });out.push(g)}});
+  return out;
+}
+var selId="";
+function buildBanner(){
+  document.getElementById("banner").append(h("div",{class:"in"},
+    h("input",{id:"nick","aria-label":"Hunter name",maxlength:"24",autocomplete:"off",placeholder:"Enter hunter name",value:nick,oninput:function(e){var was=nameOk();saveNick(e.target.value);if(nameOk())e.target.classList.remove("need");if(was!==nameOk()){if(session)renderSession();else home()}}}),
+    h("select",{id:"sel","aria-label":"S-rank target",onchange:function(e){selId=e.target.value;home()}},
+      h("option",{value:""},"All S-ranks"),
+      TARGETS.map(function(t){return h("option",{value:t.id},t.s)})),
+    h("button",{id:"bStart",class:"p",onclick:function(){startShared(selId)}},"Start shared hunt"),
+    h("button",{id:"bReset",onclick:function(){var t=find(selId);if(confirm("Reset local counters for "+(t?t.s:"all S-ranks")+"?")){if(t)delete local[t.id];else local={};saveLocal();home()}}},"Reset")));
+}
+function updateBanner(){
+  var n=document.getElementById("nick"),s=document.getElementById("sel");
+  if(!n)return;
+  if(document.activeElement!==n&&n.value!==nick)n.value=nick;
+  s.value=session?(session.scope==="all"?"":session.scope):selId;s.disabled=!!session;
+  document.getElementById("bStart").disabled=!db||!!session;
+  document.getElementById("bReset").disabled=!!session;
+}
+function infoSection(){
+  return h("section",{class:"info",id:"info"},h("h2",null,"Info"),
+    h("div",{class:"card"},INFO.map(function(p){return h("p",null,p)})));
+}
+function msg(){
+  var out=[];
+  if(lastErr)out.push(h("div",{class:"msg"},lastErr));
+  if(!nameOk())out.push(h("div",{class:"msg"},"Enter your hunter name in the banner above to start counting."));
+  if(!db)out.push(h("div",{class:"msg"},"Shared hunts aren’t set up yet: add your Firebase database URL to DB_URL in the script. Local counters still work."));
+  return out;
+}
+
+function newCode(){
+  var a=new Uint8Array(10);crypto.getRandomValues(a);
+  return "h-"+[].map.call(a,function(x){return "abcdefghjkmnpqrstuvwxyz23456789"[x%31]}).join("");
+}
+async function startShared(scope){
+  if(!nameOk()){needName();return}
+  var code=newCode(),list=scope?[find(scope)]:TARGETS;
+  try{
+    await db.doc("sessions/"+code).set({scope:scope||"all",created:Date.now(),by:me()});
+    for(var i=0;i<list.length;i++){var seed=local[list[i].id]||{};
+      for(var mon in seed){if(seed[mon]>0)await db.collection("sessions/"+code+"/events").add({tg:list[i].id,mon:mon,d:seed[mon],by:me()+" (starting count)",t:Date.now()})}}
+    location.hash=code;
+    openSession(code);
+  }catch(e){lastErr="Could not start a shared hunt: "+(e&&e.message||e);home()}
+}
+
+async function openSession(code){
+  closeSession();lastErr="";
+  var snap;
+  try{snap=await db.doc("sessions/"+code).get()}catch(e){lastErr="Could not open that hunt.";return home()}
+  var d=snap.exists&&snap.data(),scope=d&&(d.scope||d.target);
+  var list=scope==="all"?TARGETS:(find(scope)?[find(scope)]:null);
+  if(!list){lastErr="That shared hunt wasn’t found. Check the link.";return home()}
+  session={code:code,scope:scope,list:list,counts:{},log:[],status:"connecting…",unsub:null,tick:null};
+  var to=setTimeout(function(){if(session&&session.code===code&&!session.live){session.status="slow to connect";renderSession()}},10000);
+  session.unsub=db.collection("sessions/"+code+"/events").orderBy("t").onSnapshot(function(s){
+    clearTimeout(to);
+    var counts={},log=[];
+    s.docs.forEach(function(x){var e=x.data(),tg=e.tg||scope;counts[tg]=counts[tg]||{};counts[tg][e.mon]=(counts[tg][e.mon]||0)+e.d;log.push(e)});
+    session.counts=counts;session.log=log.slice(-15).reverse();session.live=true;session.status="live";renderSession();
+  },function(e){session.status="disconnected";renderSession()});
+  session.tick=setInterval(function(){if(session)renderLog()},15000);
+  renderSession();
+}
+function closeSession(){if(session){try{session.unsub&&session.unsub()}catch(e){}clearInterval(session.tick);session=null}}
+function leave(){closeSession();history.replaceState(null,"",location.pathname+location.search);home()}
+
+function renderSession(){
+  if(!session)return;
+  var s=session,link=location.href.split("#")[0]+"#"+s.code;
+  var inp=h("input",{readonly:"readonly",value:link,"aria-label":"Share link",onfocus:function(e){e.target.select()}});
+  var copy=h("button",{onclick:function(){
+    inp.select();var ok=false;try{ok=navigator.clipboard?(navigator.clipboard.writeText(link),true):document.execCommand("copy")}catch(e){try{ok=document.execCommand("copy")}catch(_){}}
+    copy.textContent=ok?"Copied":"Press Ctrl+C"}},"Copy");
+  $app.replaceChildren(
+    h("div",{class:"bar2"},h("button",{onclick:leave},"← Back"),h("span",{class:"st"},"Shared hunt · "+s.status)),
+    h("h1",null,s.scope==="all"?"All S-ranks":s.list[0].s),
+    h("p",{class:"sub"},"Code: "+s.code+" — anyone with this link can add kills."),
+    h("div",{class:"link"},inp,copy),
+    ...msg(),
+    h("div",null,groupByExp(s.list,function(id){return s.counts[id]||{}},function(id,mon,d){
+      db.collection("sessions/"+s.code+"/events").add({tg:id,mon:mon,d:d,by:me(),t:Date.now()}).catch(function(){session.status="write failed (check connection)";renderSession()});
+    })),
+    h("h2",null,"Recent activity"),
+    h("ul",{class:"log",id:"log"}),
+    infoSection());
+  updateBanner();renderLog();
+}
+function renderLog(){
+  var ul=document.getElementById("log");if(!ul||!session)return;
+  ul.replaceChildren();
+  if(!session.log.length)ul.append(h("li",null,"No kills logged yet."));
+  session.log.forEach(function(e){
+    ul.append(h("li",null,h("span",null,e.by+" "+(e.d>0?"+"+e.d:"−"+Math.abs(e.d))+" "+e.mon),h("time",null,ago(e.t))));
+  });
+}
+
+window.addEventListener("hashchange",function(){
+  var c=location.hash.slice(1);
+  if(c&&db&&/^h-[a-z0-9]+$/.test(c))openSession(c);else if(!c){closeSession();home()}
+});
+
+buildBanner();home();
+(async function(){
+  try{
+    if(DB_URL)db=makeDb(DB_URL);
+  }catch(e){}
+  var c=location.hash.slice(1);
+  if(db&&/^h-[a-z0-9]+$/.test(c))openSession(c);else home();
+})();
+</script>
+</body>
+</html>
