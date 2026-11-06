@@ -76,7 +76,7 @@ var INFO=["[Placeholder] Add your disclaimers and attribution here."];
 /* ---- Shared-hunt storage: Firebase Realtime Database over plain REST (no SDK, no sign-in) ----
    1) Create a Realtime Database in the Firebase console, 2) set its rules to: {"rules":{".read":false,".write":false,"sessions":{"$code":{".read":true,".write":true,".validate":"$code.matches(/^h-[a-z0-9]{10}$/)"}}}},
    3) put the database URL here, e.g. "https://my-hunt-default-rtdb.firebaseio.com" */
-var DB_URL="https://console.firebase.google.com/u/0/project/hunt-kill-tracker/database/hunt-kill-tracker-default-rtdb/data/~2F";
+var DB_URL="https://hunt-kill-tracker-default-rtdb.europe-west1.firebasedatabase.app/";
 var POLL_MS=3000; /* how often each open page checks for new kills (well inside the 10 s target) */
 function makeDb(base){
   base=base.replace(/\/+$/,"");
